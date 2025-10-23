@@ -7,6 +7,7 @@ format:
 execute:
   echo: true
   eval: true
+
 ---
 
 # 🔗 Data Manipulation Challenge - A Mental Model for Method Chaining in Pandas
@@ -218,7 +219,77 @@ What's wrong with the `lateStatement` assignment and how would you fix it?
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+---
+
+
+**Question 1: Data Types and Date Handling**
+
+#### Data Type of Dates
+The `actualShipDate` column is a `datetime64[ns]` type - a specialized format that treats each value as a proper calendar date with time information. You can check this using the `.dtype` attribute on any pandas Series.
+
+#### Why Same Types Matter
+Think of it like sorting apples and oranges:
+
+::: {.callout-note}
+If one date is text ("2025-04-11") and another is a real date object:
+
+- The computer won't understand they're dates
+- It can't calculate time differences
+- It can't properly compare which came first
+:::
+
+**Question 2: String vs Date Comparison**
+
+::: {.callout-important}
+### The Problem with String Dates
+
+When comparing "04-11-2025" and "05-20-2024" as strings:
+
+- The computer looks at characters from left to right
+- It sees "04" < "05", so thinks April 2025 comes before May 2024
+- This is wrong! 2025 should come after 2024
+:::
+
+::: {.callout-tip}
+### Real-World Analogy
+It's like sorting phone numbers as text:
+- As text: "2" comes after "11" (wrong!)
+- As numbers: 2 comes before 11 (correct!)
+
+Same with dates - they need to be proper date objects for correct ordering.
+:::
+
+**Question 3: Debug This Code**
+
+::: {.callout-important}
+### What's Wrong
+The code tries to use a Python if/else statement inside `.assign()`, but:
+
+1. It breaks the column-wise operation concept
+2. It tries to access `shipments_df['is_late']` which doesn't exist yet
+3. The comma after the string makes it invalid syntax
+:::
+
+::: {.callout-tip}
+### How to Fix It
+Use a lambda function with `np.where` to handle the if/else:
+
+```python
+shipments_with_lateness = (
+    shipments_df
+    .assign(
+    is_late=lambda df: df['actualShipDate'] > df['plannedShipDate'],
+    days_late=lambda df: (df['actualShipDate'] - df['plannedShipDate']).dt.days,
+    lateStatement=lambda df: np.where(df['is_late'],
+                                    "Darn Shipment is Late",
+                                    "Shipment is on Time")
+    )
+)
+```
+:::
+
+
+---
 
 ### 2. Subset: Querying Rows and Filtering Columns
 
@@ -263,7 +334,30 @@ print(late_shipments.head())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+---
+
+**Question 1: Query vs Boolean Indexing**
+
+- `.query('is_late == True')` reads like a sentence and is easy to scan. It's good for simple conditions and keeps code tidy.
+- `df[df['is_late'] == True]` is explicit and flexible: you can build complex conditions with normal Python operators and variables.
+
+Which is more readable?
+- For short, simple conditions, `.query()` is usually more readable because it looks like plain English.
+- For complex logic or when you need to use Python variables directly, boolean indexing (`df[...]`) is clearer.
+
+**Question 2: Using a late_threshold**
+
+If you want shipments at least `late_threshold` days late, define the variable and use boolean indexing. This is clear and flexible.
+
+Example:
+- Set `late_threshold` to a number (for example, 5)
+- Keep rows where `days_late` is greater than or equal to `late_threshold`
+
+Why use boolean indexing here?
+- It makes it simple to plug in a variable
+- The condition can use any combined logic (AND, OR, parentheses)
+
+---
 
 ### 3. Drop: Removing Unwanted Data
 
@@ -301,7 +395,58 @@ print("Remaining columns:", clean_shipments.columns.tolist())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+---
+
+**Question 1: Drop vs Filter Strategies**
+
+::: {.callout-note}
+### Key Difference
+- `.drop()` removes specified columns
+- `.filter()` keeps specified columns
+
+It's like two ways to clean your desk:
+- `drop`: "Remove these three items"
+- `filter`: "Keep only these five items"
+:::
+
+::: {.callout-tip}
+### When to Use Each
+Choose `.drop()` when:
+- You have a few unwanted columns
+- You want to preserve most columns
+- You're removing problematic columns
+
+Choose `.filter()` when:
+- You know exactly which columns you need
+- You want to create a focused subset
+- You're building a specific view of the data
+:::
+
+**Question 2: Missing Data Handling**
+
+::: {.callout-important}
+### Understanding .dropna()
+- Without `subset`: Removes rows with ANY missing value
+- With `subset`: Only checks specified columns
+
+Think of it like attendance:
+- Without subset: "Remove if student missed ANY class"
+- With subset: "Remove only if missed MATH or SCIENCE"
+:::
+
+::: {.callout-note}
+### Why Be Selective?
+Use `subset` when:
+- Some columns can have missing values (like optional fields)
+- Critical calculations need complete data
+- You want to preserve more rows
+
+Example: In shipping data
+- Missing dates are critical (can't calculate delays)
+- Missing product notes are okay (not needed for timing analysis)
+:::
+
+---
 
 ### 4. Sort: Arranging Data
 
@@ -339,7 +484,64 @@ print(sorted_by_lateness[['shipID', 'partID', 'days_late', 'is_late']].head(10))
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+---
+
+**Question 1: Sorting Strategies**
+
+::: {.callout-note}
+### ascending=True vs False
+- `ascending=True`: A→Z, 1→9 (smallest first)
+- `ascending=False`: Z→A, 9→1 (largest first)
+
+In our shipping data:
+- `ascending=True`: Show on-time shipments first
+- `ascending=False`: Show most delayed shipments first
+:::
+
+::: {.callout-tip}
+### Sorting by Multiple Columns
+Use a list of columns and a list of directions:
+
+```python
+df.sort_values(
+    by=['is_late', 'days_late'],
+    ascending=[True, False]
+)
+```
+
+1. First by section (is_late)
+2. Then by publication date (days_late)
+:::
+
+**Question 2: Index Management**
+
+::: {.callout-important}
+### Why Reset Index?
+The original index is like sticky notes on the data:
+
+- When we sort, the sticky notes stay with their original rows
+- This breaks the visual "1,2,3..." sequence
+- `.reset_index(drop=True)` gives fresh, sequential numbers
+:::
+
+::: {.callout-warning}
+### Problems with Original Index
+Without resetting:
+- Row 5 might appear before Row 1
+- Position ≠ Index number
+- Hard to reference "first N rows"
+
+Example from shipping data:
+```
+Index  days_late
+  20      5
+   3      4
+  15      3
+```
+Confusing! Are we looking at row 1, 2, or 3?
+:::
+
+---
 
 ### 5. Aggregate: Summarizing Data
 
@@ -379,8 +581,35 @@ print(f"\nOn-time delivery rate: {on_time_rate:.1f}%")
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
 
+---
+
+**Question 1: Boolean Aggregation**
+
+::: {.callout-note}
+### Why does `sum()` work on boolean values?
+
+In Python, boolean values are a subclass of integers where:
+
+- `True` is equivalent to `1`
+- `False` is equivalent to `0`
+
+:::
+
+
+::: {.callout-note}
+### Question 2: What does it count?**
+
+When you use `sum()` on a boolean column:
+
+- It counts the number of `True` values
+- In this case, it's counting the total number of late shipments since `is_late` is `True` for late shipments
+
+:::
+
+
+
+---
 ### 6. Merge: Combining Information
 
 **Mental Model:** Join data from multiple sources to create richer datasets.
@@ -418,7 +647,50 @@ print(shipments_with_category['prodCategory'].value_counts())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+**************
+
+**Question 1: Join Types and Data Loss**
+
+:::{.callout-note}
+### Why use how='left' in most cases?
+The recommendation to use how='left' in most joins is based on several important considerations:
+
+1. **Data Preservation**: 
+   - Left joins preserve ALL records from your primary (left) dataset
+   - This ensures no data loss from your main analysis dataset
+   - Critical when analyzing business metrics like shipment performance
+
+2. **Audit Trail**:
+   - Left joins make it easy to identify missing matches
+   - You can spot null values in the joined columns
+   - Helps maintain data quality control
+
+:::
+
+:::{.callout-note}
+### How to check for lost shipments during merge?
+
+1. **We can check for data loss in joins using these methods:**
+   - Compare row counts: Length of Original shipments df and After left join
+   - Identify unmatched records: Find partIDs that exist in shipments but not in product_line
+
+:::
+
+**Question 2: Key Column Matching**
+
+:::{.callout-note}
+### What happens if there are duplicate partID values in the product_line_df?
+
+When there are duplicate partID values in product_line_df, the join behavior becomes more complex:
+
+1. **Data Multiplication**: 
+   - Each matching record in the left dataset will be paired with ALL matching records in the right dataset
+   - This can lead to unexpected row multiplication
+
+:::
+
+
+*************
 
 ### 7. Split-Apply-Combine: Group Analysis
 
@@ -458,7 +730,55 @@ print(service_by_category)
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+**********
+**Question 1: GroupBy Mechanics**
+
+:::{.callout-note}
+### What does `.groupby('prodCategory')` actually do?
+
+- It splits the **DataFrame** into **subgroups** based on unique values in the `prodCategory` column.
+
+:::
+
+:::{.callout-note}
+### How does it “split” the data?
+
+- Internally, it creates a dictionary-like structure where each key is a unique `prodCategory`, and the value is the subset of rows belonging to that category.
+
+:::
+
+
+:::{.callout-note}
+### Why do we need to use `.agg()` after grouping? What happens if you don’t?
+
+- `.agg()` tells pandas **what to compute** for each group — like `mean`, `sum`, `count`, etc.
+- Without `.agg()`, we just have a grouped object — no calculations are performed.
+
+
+:::
+
+**Question 2: Multi-Level Grouping**
+
+:::{.callout-note}
+### Exploring grouping by ['shipID', 'prodCategory']
+
+- It creates **hierarchical groups** based on **combinations** of `shipID` and `prodCategory`.
+- Each group represents a unique pairing — e.g., shipment `S123` with category Electronics.
+
+:::
+
+
+:::{.callout-note}
+### What question does this answer versus grouping by 'prodCategory' alone?
+
+- How did each shipment perform **across** different **product categories**?
+- Captures cases where a single `shipID` includes multiple `partID`s from different categories.
+
+:::
+
+
+
+**********
 
 ## Answering A Business Question
 
@@ -502,8 +822,93 @@ print(f"Percentage with multiple categories: {multi_category_shipments['shipID']
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+*************
 
+**Question 1: Business Question Analysis**
+
+:::{.callout-note}
+### What business question does this comprehensive analysis answer?
+
+- “How often do shipments span multiple product categories, and what operational or service implications does that have?”
+
+By identifying that **23.3% of shipments contain multiple product categories**, ZappTech gains visibility into the **complexity of order fulfillment**, which directly impacts:
+- Warehouse picking and packing workflows
+- Shipment tracking and delay attribution
+- Customer experience across diverse product lines
+
+:::
+
+:::{.callout-note}
+### How does grouping by ['shipID', 'prodCategory'] differ from grouping by just 'prodCategory'?
+
+| Grouping Type | Purpose | Usage |
+|:---------|:--------|:---------|
+| `groupby('prodCategory')` | Aggregates service metrics per **category**, across all shipments | Understand category-level performance (e.g., Machines vs Liquids)|
+| `groupby(['shipID', 'prodCategory'])` | Breaks down service metrics **per shipment-category pair** | Audit mixed-category shipments, trace delays to specific combinations |
+
+ - **Key Difference:** Grouping by `['shipID', 'prodCategory']` exposes intra-shipment variation — crucial when a single shipment includes both fast-moving and slow-moving categories.
+
+:::
+
+:::{.callout-note}
+### What insights can ZappTech’s management gain from knowing the percentage of multi-category shipments?
+
+Knowing that 23.3% of shipments are multi-category enables ZappTech to:
+1. **Optimize Fulfillment Operations**
+- Mixed-category shipments may require **cross-zone coordination** in warehouses.
+- Helps refine **batching and routing logic** to reduce handling time.
+2. **Improve Delay Attribution**
+- If delays are frequent in multi-category shipments, management can investigate:
+  - Are certain categories consistently causing bottlenecks?
+  - Are packaging or carrier constraints linked to category combinations?
+3. **Enhance Customer Communication**
+- Mixed-category orders may have **split deliveries** or varied service levels.
+- Enables proactive messaging: “Your furniture will arrive separately from electronics.”
+4. **Strategic Product Bundling**
+- Insights into common category pairings can inform **promotions, bundles**, or **inventory placement**.
+
+
+:::
+
+:::{.callout-note}
+### Visualization of the Service Level by Product Category
+
+
+```{python}
+import matplotlib.pyplot as plt
+
+# Sample data: replace with your actual DataFrame
+# Assuming service_by_category is a MultiIndex DataFrame from your groupby/agg
+# and 'is_late', 'mean' gives the % late per category
+service_level = service_by_category['is_late']['mean'] * 100  # Convert to percentage
+
+# Sort for better visual impact
+service_level = service_level.sort_values(ascending=False)
+
+# Plot
+fig, ax = plt.subplots(figsize=(8, 5))
+bars = ax.bar(service_level.index, service_level.values, color='steelblue', edgecolor='black')
+
+# Add value labels
+for bar in bars:
+    height = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2, height + 1, f'{height:.1f}%', ha='center', va='bottom', fontsize=10)
+
+# Styling
+ax.set_title('Service Level by Product Category', fontsize=16, fontweight='bold')
+ax.set_ylabel('% Late Shipments', fontsize=12)
+ax.set_xlabel('Product Category', fontsize=12)
+ax.set_ylim(0, max(service_level.values) * 1.2)
+ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+***************
 ## Student Analysis Section: Mastering Data Manipulation {#student-analysis-section}
 
 **Your Task:** Demonstrate your mastery of the seven mental models through comprehensive discussion and analysis. The bulk of your grade comes from thoughtfully answering the discussion questions for each mental model. See below for more details.
