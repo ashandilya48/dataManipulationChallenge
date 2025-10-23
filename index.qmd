@@ -877,19 +877,16 @@ Knowing that 23.3% of shipments are multi-category enables ZappTech to:
 ```{python}
 import matplotlib.pyplot as plt
 
-# Sample data: replace with your actual DataFrame
-# Assuming service_by_category is a MultiIndex DataFrame from your groupby/agg
-# and 'is_late', 'mean' gives the % late per category
 service_level = service_by_category['is_late']['mean'] * 100  # Convert to percentage
 
-# Sort for better visual impact
+# Sorting for better visual impact
 service_level = service_level.sort_values(ascending=False)
 
 # Plot
 fig, ax = plt.subplots(figsize=(8, 5))
 bars = ax.bar(service_level.index, service_level.values, color='steelblue', edgecolor='black')
 
-# Add value labels
+# Adding value labels
 for bar in bars:
     height = bar.get_height()
     ax.text(bar.get_x() + bar.get_width()/2, height + 1, f'{height:.1f}%', ha='center', va='bottom', fontsize=10)
