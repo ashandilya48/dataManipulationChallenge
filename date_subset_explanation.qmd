@@ -1,0 +1,30 @@
+---
+title: "Filtering Rows: Query vs Boolean Indexing"
+format: html
+---
+
+## Question 1: Query vs Boolean Indexing
+
+- `.query('is_late == True')` reads like a sentence and is easy to scan. It's good for simple conditions and keeps code tidy.
+- `df[df['is_late'] == True]` is explicit and flexible: you can build complex conditions with normal Python operators and variables.
+
+Which is more readable?
+- For short, simple conditions, `.query()` is usually more readable because it looks like plain English.
+- For complex logic or when you need to use Python variables directly, boolean indexing (`df[...]`) is clearer.
+
+## Question 2: Using a late_threshold
+
+If you want shipments at least `late_threshold` days late, define the variable and use boolean indexing. This is clear and flexible.
+
+Example (plain English):
+- Set `late_threshold` to a number (for example, 5)
+- Keep rows where `days_late` is greater than or equal to `late_threshold`
+
+Why use boolean indexing here?
+- It makes it simple to plug in a variable
+- The condition can use any combined logic (AND, OR, parentheses)
+
+### Short checklist
+- Use `.query()` for short, readable filters
+- Use boolean indexing when you need variables or complex conditions
+- For `late_threshold`, use boolean indexing to filter rows based on the variable

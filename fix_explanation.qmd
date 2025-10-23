@@ -1,0 +1,53 @@
+---
+title: "Fixing the Late Statement Error"
+format: html
+---
+
+## The Problem
+
+::: {.callout-important}
+## What's Wrong
+The code tries to use a Python if/else statement inside `.assign()`, but:
+
+1. It breaks the column-wise operation concept
+2. It tries to access `shipments_df['is_late']` which doesn't exist yet
+3. The comma after the string makes it invalid syntax
+:::
+
+## The Simple Fix
+
+::: {.callout-tip}
+## How to Fix It
+Use a lambda function with `np.where` to handle the if/else:
+
+```python
+.assign(
+    is_late=lambda df: df['actualShipDate'] > df['plannedShipDate'],
+    days_late=lambda df: (df['actualShipDate'] - df['plannedShipDate']).dt.days,
+    lateStatement=lambda df: np.where(df['is_late'],
+                                    "Darn Shipment is Late",
+                                    "Shipment is on Time")
+)
+```
+:::
+
+## Why This Works
+
+::: {.callout-note}
+Think of it like giving instructions to a helper:
+
+1. First, create `is_late` for each row
+2. Then tell `np.where`: "IF the row is late, use this message, ELSE use that message"
+3. The `np.where` works like a traffic director - sending each row down the right path
+:::
+
+## Key Points
+
+1. Always use `lambda df:` in `.assign()` to work with the current state
+2. Use `.map()` for simple value translations
+3. Each step can use columns created in previous steps
+
+This approach is:
+- Easy to read
+- Works row by row
+- Uses pandas' built-in tools

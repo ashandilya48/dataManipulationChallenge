@@ -1,0 +1,148 @@
+---
+title: "Understanding Pandas Join Operations"
+format:
+  html:
+    code-fold: true
+    code-tools: true
+---
+
+## Question 1: Join Types and Data Loss
+
+### Why use `how='left'` in most cases?
+
+The recommendation to use `how='left'` in most joins is based on several important considerations:
+
+1. **Data Preservation**: 
+   - Left joins preserve ALL records from your primary (left) dataset
+   - This ensures no data loss from your main analysis dataset
+   - Critical when analyzing business metrics like shipment performance
+
+2. **Audit Trail**:
+   - Left joins make it easy to identify missing matches
+   - You can spot null values in the joined columns
+   - Helps maintain data quality control
+
+Let's demonstrate this with our shipment data:
+
+```{python}
+# Load the datasets
+import pandas as pd
+import numpy as np
+
+# Load shipments and product line data
+shipments_df = pd.read_csv(
+    "https://raw.githubusercontent.com/flyaflya/persuasive/main/shipments.csv", 
+    parse_dates=['plannedShipDate', 'actualShipDate']
+)
+product_line_df = pd.read_csv(
+    "https://raw.githubusercontent.com/flyaflya/persuasive/main/productLine.csv"
+)
+
+# Perform a left join
+merged_left = shipments_df.merge(
+    product_line_df,
+    on='partID',
+    how='left'
+)
+
+# Check for any nulls in joined columns
+null_counts = merged_left['productLine'].isnull().sum()
+print(f"Number of shipments without matching product lines: {null_counts}")
+```
+
+### How to check for lost shipments during merge?
+
+You can check for data loss in joins using these methods:
+
+1. **Compare row counts**:
+```{python}
+print(f"Original shipments: {len(shipments_df)}")
+print(f"After left join: {len(merged_left)}")
+
+# Try an inner join for comparison
+merged_inner = shipments_df.merge(
+    product_line_df,
+    on='partID',
+    how='inner'
+)
+print(f"After inner join: {len(merged_inner)}")
+```
+
+2. **Identify unmatched records**:
+```{python}
+# Find partIDs that exist in shipments but not in product_line
+unmatched_parts = shipments_df[
+    ~shipments_df['partID'].isin(product_line_df['partID'])
+]['partID'].unique()
+
+print(f"Number of unique unmatched partIDs: {len(unmatched_parts)}")
+if len(unmatched_parts) > 0:
+    print("Sample of unmatched partIDs:", unmatched_parts[:5])
+```
+
+## Question 2: Duplicate Keys in Joins
+
+When there are duplicate `partID` values in `product_line_df`, the join behavior becomes more complex:
+
+1. **Data Multiplication**: 
+   - Each matching record in the left dataset will be paired with ALL matching records in the right dataset
+   - This can lead to unexpected row multiplication
+
+Let's demonstrate this:
+
+```{python}
+# Check for duplicates in product_line_df
+duplicate_parts = (
+    product_line_df
+    .groupby('partID')
+    .size()
+    .reset_index(name='count')
+    .query('count > 1')
+)
+
+print("\nParts with multiple product lines:")
+print(duplicate_parts)
+
+if len(duplicate_parts) > 0:
+    # Show an example of how joins multiply data
+    example_part = duplicate_parts['partID'].iloc[0]
+    print(f"\nShipments for part {example_part} before join:")
+    print(shipments_df[shipments_df['partID'] == example_part])
+    
+    print(f"\nProduct lines for part {example_part}:")
+    print(product_line_df[product_line_df['partID'] == example_part])
+    
+    print(f"\nResult after join for part {example_part}:")
+    print(merged_left[merged_left['partID'] == example_part])
+```
+
+### Best Practices for Handling Duplicate Keys:
+
+1. **Validate Data Quality**:
+   - Always check for duplicates before joining
+   - Understand why duplicates exist - is it a data quality issue?
+
+2. **Choose Appropriate Strategy**:
+   - If duplicates are errors: Clean the data before joining
+   - If duplicates are valid: Consider aggregating or choosing a specific record
+   - Document your approach for data governance
+
+3. **Defensive Coding**:
+```{python}
+# Example of defensive joining
+# First, check for and handle duplicates
+clean_product_lines = (
+    product_line_df
+    .groupby('partID')
+    .agg({
+        'productLine': 'first',  # take first occurrence
+        'duplicate_check': lambda x: len(x)  # count occurrences
+    })
+    .reset_index()
+)
+
+print("\nSummary of duplicate handling:")
+print(clean_product_lines['duplicate_check'].value_counts())
+```
+
+Remember: The choice of join type and handling of duplicates should align with your business requirements and data quality standards.

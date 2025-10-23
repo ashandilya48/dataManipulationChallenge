@@ -1,0 +1,46 @@
+---
+title: "Understanding Date Types and Comparison"
+format: html
+---
+
+## Question 1: Data Types and Date Handling
+
+### Data Type of Dates
+The `actualShipDate` column is a `datetime64[ns]` type - a specialized format that treats each value as a proper calendar date with time information. You can check this using the `.dtype` attribute on any pandas Series.
+
+### Why Same Types Matter
+Think of it like sorting apples and oranges:
+
+::: {.callout-note}
+If one date is text ("2025-04-11") and another is a real date object:
+
+- The computer won't understand they're dates
+- It can't calculate time differences
+- It can't properly compare which came first
+:::
+
+## Question 2: String vs Date Comparison
+
+::: {.callout-important}
+## The Problem with String Dates
+
+When comparing "04-11-2025" and "05-20-2024" as strings:
+
+- The computer looks at characters from left to right
+- It sees "04" < "05", so thinks April 2025 comes before May 2024
+- This is wrong! 2025 should come after 2024
+:::
+
+::: {.callout-tip}
+## Real-World Analogy
+It's like sorting phone numbers as text:
+- As text: "2" comes after "11" (wrong!)
+- As numbers: 2 comes before 11 (correct!)
+
+Same with dates - they need to be proper date objects for correct ordering.
+:::
+
+### Summary
+- Always use proper date types for dates
+- Convert strings to dates before comparing
+- Let the computer understand these are calendar dates, not just text
